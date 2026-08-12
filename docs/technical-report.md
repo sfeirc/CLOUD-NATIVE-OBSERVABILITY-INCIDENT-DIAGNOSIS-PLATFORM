@@ -27,27 +27,31 @@ the diagnosis receiver. Grafana provisions trace-to-log and trace-to-metric link
 
 ## Verification evidence
 
-The local run on 2026-08-12 passed 13 tests with 82.18% coverage over the selected
+The local run on 2026-08-12 passed 27 tests with 86.08% coverage over the selected
 owned core (entrypoint and container glue excluded). Tests cover trace parentage,
-error attributes, OTLP metrics/logs, malformed payload rejection, SLO arithmetic,
-dual-window alerts, database hypothesis ranking, evidence citations, safe memory
+real HTTP W3C propagation, error attributes, all OTLP signal types and malformed
+payloads, SLO arithmetic, dual-window alerts, all four incident scenarios,
+one-snapshot analysis, exact percentile behavior, evidence citations, safe memory
 fault bounds, deterministic HTTP faults, structured logs, and API validation.
 
-The recorded correlation benchmark uses 30 repetitions per size. Median analysis
-time was 0.310 ms at 100 configured baseline items, 2.725 ms at 1,000, 13.982 ms
-at 5,000, and 27.011 ms at 10,000. The 10,000-item p95 was 30.629 ms. These are
-local in-memory algorithm measurements on the hardware recorded in
-`benchmarks/results/local/summary.json`; no container or throughput inference is
-made.
+Profiling attributed most correlation time to repeated evidence-window scans and
+SLO extraction. The optimized engine takes one consistent hour snapshot, groups
+signals by service once, reuses it for SLO calculation and ranking, and uses an
+exact nearest-rank selection path that avoids full sorting for upper percentiles.
+At 10,000 configured baseline items, the recorded median fell from 27.011 ms to
+18.411 ms (31.8% lower) and p95 from 30.629 ms to 21.129 ms (31.0% lower). Both
+runs use 30 repetitions on the same recorded hardware, OS, Python, and workload;
+the comparison JSON verifies those fields. These remain local in-memory algorithm
+measurements, not container or throughput results.
 
-## Unverified acceptance path
+## Container acceptance boundary
 
-The Compose and Kubernetes paths were not executable on this host. Accordingly,
-this report does not claim the platform is production-ready or that the main
-branch is remotely green. CI is configured to run formatting, linting, tests,
-package/container builds, Compose validation, dependency audit, and static
-security checks on GitHub-hosted runners.
+The Compose and Kubernetes paths were not executable on the development host.
+GitHub-hosted Linux CI independently completed the Python package build, Compose
+model validation, and Docker image build. It does not execute the complete stack,
+so backend interoperability and the killer demo remain runtime-unverified. This
+report does not call the platform production-ready.
 
-Bandit completed locally with no findings. The local dependency audit did not
-complete because PyPI TLS validation failed on a self-signed certificate in the
-host chain; TLS verification was not bypassed, so no clean audit result is claimed.
+Bandit completed locally with no findings. Runtime and development dependencies
+are hash-locked; an OSV audit of the lock completed with no known vulnerabilities
+on 2026-08-12. This is a point-in-time result, not a permanent safety claim.

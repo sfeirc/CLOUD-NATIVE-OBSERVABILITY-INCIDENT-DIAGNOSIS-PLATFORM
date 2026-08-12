@@ -1,9 +1,8 @@
 # Known limitations
 
-- Docker, Compose, Grafana, Tempo, Loki, Prometheus, Alertmanager, and Kubernetes
-  could not be executed on the development host because no container runtime was
-  installed. Configuration syntax was parsed locally; runtime compatibility is
-  not claimed.
+- The development host had no container runtime. GitHub Actions validated the
+  Docker image build and Compose model on Linux, but did not execute the complete
+  Grafana/Tempo/Loki/Prometheus/Alertmanager stack or Kubernetes manifests.
 - The diagnosis store and incident registry are process-local and non-durable.
   Horizontal replicas would require shared storage and leader/deduplication logic.
 - OTLP ingestion retains a useful subset, not every OTLP field. Exponential
@@ -18,6 +17,6 @@
   a placeholder Secret that must be replaced before deployment.
 - The local benchmark measures only in-memory correlation analysis. It says
   nothing about request throughput, Collector capacity, or backend ingestion.
-- The local `pip-audit` attempt could not query PyPI because the host TLS chain
-  included an untrusted self-signed certificate. Certificate verification was not
-  disabled; dependency vulnerability status therefore remains unverified locally.
+- The default PyPI audit endpoint could not validate the host TLS chain. The same
+  hash-locked dependency set was successfully audited through OSV with no known
+  vulnerabilities on 2026-08-12; this point-in-time result can become stale.

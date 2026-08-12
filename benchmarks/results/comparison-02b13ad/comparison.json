@@ -1,0 +1,56 @@
+{
+  "generated_at": 1786524487.2056127,
+  "comparability_checks": {
+    "hardware_equal": true,
+    "operating_system_equal": true,
+    "python_equal": true,
+    "sizes_equal": true,
+    "repetitions_equal": true
+  },
+  "baseline": {
+    "label": "local",
+    "commit": "bafbb842f1dca0488d4ac08a28c830a4d893ac6f"
+  },
+  "candidate": {
+    "label": "optimized-02b13ad",
+    "commit": "02b13adb78957171f2c3778d5e3091a903d7d57f"
+  },
+  "comparison": [
+    {
+      "configured_baseline_items": 100,
+      "baseline_median_ms": 0.3095,
+      "candidate_median_ms": 0.2389,
+      "median_improvement_percent": 22.81098546042003,
+      "baseline_p95_ms": 0.3332,
+      "candidate_p95_ms": 0.3061,
+      "p95_improvement_percent": 8.133253301320533
+    },
+    {
+      "configured_baseline_items": 1000,
+      "baseline_median_ms": 2.7253,
+      "candidate_median_ms": 1.8457,
+      "median_improvement_percent": 32.27534583348622,
+      "baseline_p95_ms": 3.0066,
+      "candidate_p95_ms": 2.005,
+      "p95_improvement_percent": 33.313377236745836
+    },
+    {
+      "configured_baseline_items": 5000,
+      "baseline_median_ms": 13.9824,
+      "candidate_median_ms": 8.9858,
+      "median_improvement_percent": 35.73492390433689,
+      "baseline_p95_ms": 15.1197,
+      "candidate_p95_ms": 9.9508,
+      "p95_improvement_percent": 34.18652486491134
+    },
+    {
+      "configured_baseline_items": 10000,
+      "baseline_median_ms": 27.011,
+      "candidate_median_ms": 18.4112,
+      "median_improvement_percent": 31.838140017030092,
+      "baseline_p95_ms": 30.6289,
+      "candidate_p95_ms": 21.1287,
+      "p95_improvement_percent": 31.017111290317324
+    }
+  ]
+}
