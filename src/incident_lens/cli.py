@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 
 import uvicorn
 
@@ -18,7 +19,7 @@ def main() -> None:
     parser.add_argument("component", choices=APPS)
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
-    uvicorn.run(APPS[args.component], host="0.0.0.0", port=args.port)
+    uvicorn.run(APPS[args.component], host=os.getenv("BIND_HOST", "127.0.0.1"), port=args.port)
 
 
 if __name__ == "__main__":

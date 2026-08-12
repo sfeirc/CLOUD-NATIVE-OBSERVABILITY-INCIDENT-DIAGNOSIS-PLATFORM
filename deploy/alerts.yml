@@ -1,0 +1,23 @@
+groups:
+  - name: incident-lens-slo
+    rules:
+      - record: service:http_requests:rate5m
+        expr: sum by (service_name) (rate(http_server_requests_total[5m]))
+      - record: service:http_errors:ratio5m
+        expr: sum by (service_name) (rate(http_server_errors_total[5m])) / clamp_min(sum by (service_name) (rate(http_server_requests_total[5m])), 0.001)
+      - record: service:http_errors:ratio1h
+        expr: sum by (service_name) (rate(http_server_errors_total[1h])) / clamp_min(sum by (service_name) (rate(http_server_requests_total[1h])), 0.001)
+      - alert: CheckoutAvailabilityFastBurn
+        expr: service:http_errors:ratio5m{service_name="checkout-api"} / 0.001 > 14.4 and service:http_errors:ratio1h{service_name="checkout-api"} / 0.001 > 14.4
+        for: 30s
+        labels: {severity: page, slo: checkout-availability}
+        annotations:
+          summary: Checkout availability budget is burning rapidly
+          runbook_url: http://localhost:8082/docs
+      - alert: PaymentErrorBudgetBurn
+        expr: service:http_errors:ratio5m{service_name="payment-service"} / 0.01 > 6 and service:http_errors:ratio1h{service_name="payment-service"} / 0.01 > 6
+        for: 1m
+        labels: {severity: ticket, slo: payment-success}
+        annotations:
+          summary: Payment error budget is burning
+

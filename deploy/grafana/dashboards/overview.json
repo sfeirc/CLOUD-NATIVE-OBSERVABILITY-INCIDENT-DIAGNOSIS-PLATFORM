@@ -1,0 +1,36 @@
+{
+  "annotations": {"list": [{"name": "Deployments", "datasource": {"type": "loki", "uid": "loki"}, "enable": true, "expr": "{service_name=~\".+\"} |= \"deployment.started\"", "iconColor": "orange", "tagKeys": "service_name,service_version"}]},
+  "editable": false,
+  "graphTooltip": 1,
+  "links": [
+    {"title": "Diagnosis console", "url": "http://localhost:8082", "targetBlank": true},
+    {"title": "Chaos experiments", "url": "http://localhost:8081/docs", "targetBlank": true},
+    {"title": "Trace explorer", "url": "/explore?left=%7B%22datasource%22:%22tempo%22%7D", "targetBlank": false}
+  ],
+  "panels": [
+    {"id": 1, "type": "nodeGraph", "title": "Live service map", "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}, "datasource": {"type": "tempo", "uid": "tempo"}, "targets": [{"refId": "A", "queryType": "serviceMap"}]},
+    {"id": 2, "type": "stat", "title": "Request rate", "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0}, "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "sum(rate(http_server_requests_total[1m]))", "legendFormat": "requests/s", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "reqps", "color": {"mode": "thresholds"}}, "overrides": []}},
+    {"id": 3, "type": "stat", "title": "Checkout error ratio", "gridPos": {"h": 4, "w": 4, "x": 16, "y": 0}, "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "sum(rate(http_server_errors_total{service_name=\"checkout-api\"}[5m])) / clamp_min(sum(rate(http_server_requests_total{service_name=\"checkout-api\"}[5m])), 0.001)", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "percentunit", "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "red", "value": 0.001}]}}, "overrides": []}},
+    {"id": 4, "type": "stat", "title": "Active SLO alerts", "gridPos": {"h": 4, "w": 4, "x": 20, "y": 0}, "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "sum(ALERTS{alertstate=\"firing\"})", "refId": "A"}], "fieldConfig": {"defaults": {"thresholds": {"steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]}}, "overrides": []}},
+    {"id": 5, "type": "timeseries", "title": "Server latency p50 / p95 / p99", "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4}, "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [
+      {"expr": "histogram_quantile(0.50, sum by (le, service_name) (rate(http_server_duration_milliseconds_bucket[5m])))", "legendFormat": "{{service_name}} p50", "refId": "A"},
+      {"expr": "histogram_quantile(0.95, sum by (le, service_name) (rate(http_server_duration_milliseconds_bucket[5m])))", "legendFormat": "{{service_name}} p95", "refId": "B"},
+      {"expr": "histogram_quantile(0.99, sum by (le, service_name) (rate(http_server_duration_milliseconds_bucket[5m])))", "legendFormat": "{{service_name}} p99", "refId": "C"}], "fieldConfig": {"defaults": {"unit": "ms"}, "overrides": []}},
+    {"id": 6, "type": "timeseries", "title": "Error rate by service", "gridPos": {"h": 7, "w": 8, "x": 0, "y": 8}, "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "sum by (service_name) (rate(http_server_errors_total[1m]))", "legendFormat": "{{service_name}}", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "eps"}, "overrides": []}},
+    {"id": 7, "type": "timeseries", "title": "Queue depth / saturation", "gridPos": {"h": 7, "w": 8, "x": 8, "y": 8}, "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "sum by (service_name) (service_queue_depth_requests)", "legendFormat": "{{service_name}}", "refId": "A"}]},
+    {"id": 8, "type": "timeseries", "title": "Process memory", "gridPos": {"h": 7, "w": 8, "x": 16, "y": 12}, "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "avg by (service_name) (process_memory_usage_bytes)", "legendFormat": "{{service_name}}", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "bytes"}, "overrides": []}},
+    {"id": 9, "type": "timeseries", "title": "Database latency", "gridPos": {"h": 7, "w": 8, "x": 0, "y": 15}, "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "histogram_quantile(0.99, sum by (le, service_name, database) (rate(database_client_duration_milliseconds_bucket[5m])))", "legendFormat": "{{service_name}} {{database}} p99", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "ms"}, "overrides": []}},
+    {"id": 10, "type": "timeseries", "title": "CPU utilization", "gridPos": {"h": 7, "w": 8, "x": 8, "y": 15}, "datasource": {"type": "prometheus", "uid": "prometheus"}, "targets": [{"expr": "avg by (service_name) (process_cpu_utilization_ratio)", "legendFormat": "{{service_name}}", "refId": "A"}], "fieldConfig": {"defaults": {"unit": "percentunit"}, "overrides": []}},
+    {"id": 11, "type": "logs", "title": "Correlated structured logs", "gridPos": {"h": 8, "w": 24, "x": 0, "y": 22}, "datasource": {"type": "loki", "uid": "loki"}, "targets": [{"expr": "{service_name=~\".+\"} | json", "refId": "A"}], "options": {"showTime": true, "showLabels": true, "enableLogDetails": true}}
+  ],
+  "refresh": "5s",
+  "schemaVersion": 41,
+  "tags": ["opentelemetry", "sre", "incident-response"],
+  "templating": {"list": []},
+  "time": {"from": "now-15m", "to": "now"},
+  "timezone": "browser",
+  "title": "Incident Lens · System overview",
+  "uid": "incident-lens",
+  "version": 1
+}
+

@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Awaitable, Callable
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 
 from .config import Settings
 from .faults import FaultRegistry, FaultRequest
@@ -24,6 +24,8 @@ def create_service(
 
     @app.get("/readyz", include_in_schema=False)
     async def ready() -> dict[str, str]:
+        if getattr(app.state, "ready", True) is False:
+            raise HTTPException(503, f"{name} dependencies are not ready")
         return {"status": "ready", "service": name}
 
     @app.get("/_internal/faults", include_in_schema=False)

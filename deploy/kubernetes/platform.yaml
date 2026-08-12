@@ -1,0 +1,195 @@
+apiVersion: v1
+kind: Namespace
+metadata: {name: incident-lens}
+---
+apiVersion: v1
+kind: Secret
+metadata: {name: database, namespace: incident-lens}
+type: Opaque
+stringData: {POSTGRES_USER: incident, POSTGRES_PASSWORD: change-me, POSTGRES_DB: incident}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: application-env, namespace: incident-lens}
+data:
+  BIND_HOST: 0.0.0.0
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+  ORDER_URL: http://order-service:8000
+  PAYMENT_URL: http://payment-service:8000
+  DATABASE_URL: postgresql://incident:change-me@postgres:5432/incident
+  REDIS_URL: redis://redis:6379/0
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: checkout-api, namespace: incident-lens}
+spec:
+  replicas: 2
+  strategy: {type: RollingUpdate, rollingUpdate: {maxUnavailable: 0, maxSurge: 1}}
+  selector: {matchLabels: {app: checkout-api}}
+  template:
+    metadata: {labels: {app: checkout-api}}
+    spec:
+      containers:
+        - name: app
+          image: incident-lens:0.1.0
+          args: [api]
+          ports: [{name: http, containerPort: 8000}]
+          envFrom: [{configMapRef: {name: application-env}}]
+          env: [{name: SERVICE_VERSION, value: v1.0.0}]
+          readinessProbe: {httpGet: {path: /readyz, port: http}, periodSeconds: 5}
+          livenessProbe: {httpGet: {path: /healthz, port: http}, periodSeconds: 10}
+          resources: {requests: {cpu: 100m, memory: 96Mi}, limits: {cpu: 750m, memory: 256Mi}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: checkout-api, namespace: incident-lens}
+spec: {selector: {app: checkout-api}, ports: [{name: http, port: 8000, targetPort: http}]}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: order-service, namespace: incident-lens}
+spec:
+  replicas: 2
+  strategy: {type: RollingUpdate, rollingUpdate: {maxUnavailable: 0, maxSurge: 1}}
+  selector: {matchLabels: {app: order-service}}
+  template:
+    metadata: {labels: {app: order-service}}
+    spec:
+      containers:
+        - name: app
+          image: incident-lens:0.1.0
+          args: [order]
+          ports: [{name: http, containerPort: 8000}]
+          envFrom: [{configMapRef: {name: application-env}}]
+          env: [{name: SERVICE_VERSION, value: v1.2.0}]
+          readinessProbe: {httpGet: {path: /readyz, port: http}, periodSeconds: 5}
+          livenessProbe: {httpGet: {path: /healthz, port: http}, periodSeconds: 10}
+          resources: {requests: {cpu: 100m, memory: 96Mi}, limits: {cpu: 750m, memory: 256Mi}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: order-service, namespace: incident-lens}
+spec: {selector: {app: order-service}, ports: [{name: http, port: 8000, targetPort: http}]}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: payment-service, namespace: incident-lens}
+spec:
+  replicas: 2
+  strategy: {type: RollingUpdate, rollingUpdate: {maxUnavailable: 0, maxSurge: 1}}
+  selector: {matchLabels: {app: payment-service}}
+  template:
+    metadata: {labels: {app: payment-service}}
+    spec:
+      containers:
+        - name: app
+          image: incident-lens:0.1.0
+          args: [payment]
+          ports: [{name: http, containerPort: 8000}]
+          envFrom: [{configMapRef: {name: application-env}}]
+          env: [{name: SERVICE_VERSION, value: v1.7.0}]
+          readinessProbe: {httpGet: {path: /readyz, port: http}, periodSeconds: 5, failureThreshold: 6}
+          livenessProbe: {httpGet: {path: /healthz, port: http}, periodSeconds: 10}
+          resources: {requests: {cpu: 150m, memory: 128Mi}, limits: {cpu: "1", memory: 384Mi}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: payment-service, namespace: incident-lens}
+spec: {selector: {app: payment-service}, ports: [{name: http, port: 8000, targetPort: http}]}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: diagnosis, namespace: incident-lens}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: diagnosis}}
+  template:
+    metadata: {labels: {app: diagnosis}}
+    spec:
+      containers:
+        - name: app
+          image: incident-lens:0.1.0
+          args: [diagnosis]
+          env: [{name: BIND_HOST, value: 0.0.0.0}]
+          ports: [{name: http, containerPort: 8000}]
+          readinessProbe: {httpGet: {path: /healthz, port: http}, periodSeconds: 5}
+          livenessProbe: {httpGet: {path: /healthz, port: http}, periodSeconds: 10}
+          resources: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: 750m, memory: 512Mi}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: diagnosis, namespace: incident-lens}
+spec: {selector: {app: diagnosis}, ports: [{name: http, port: 8000, targetPort: http}]}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: chaos-controller, namespace: incident-lens}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: chaos-controller}}
+  template:
+    metadata: {labels: {app: chaos-controller}}
+    spec:
+      containers:
+        - name: app
+          image: incident-lens:0.1.0
+          args: [chaos]
+          ports: [{name: http, containerPort: 8000}]
+          envFrom: [{configMapRef: {name: application-env}}]
+          readinessProbe: {httpGet: {path: /readyz, port: http}, periodSeconds: 5}
+          livenessProbe: {httpGet: {path: /healthz, port: http}, periodSeconds: 10}
+          resources: {requests: {cpu: 50m, memory: 64Mi}, limits: {cpu: 500m, memory: 192Mi}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: chaos-controller, namespace: incident-lens}
+spec: {selector: {app: chaos-controller}, ports: [{name: http, port: 8000, targetPort: http}]}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: {name: postgres, namespace: incident-lens}
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector: {matchLabels: {app: postgres}}
+  template:
+    metadata: {labels: {app: postgres}}
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17.6-alpine
+          envFrom: [{secretRef: {name: database}}]
+          ports: [{name: postgres, containerPort: 5432}]
+          readinessProbe: {exec: {command: [pg_isready, -U, incident]}, periodSeconds: 5}
+          resources: {requests: {cpu: 100m, memory: 128Mi}, limits: {cpu: "1", memory: 512Mi}}
+          volumeMounts: [{name: data, mountPath: /var/lib/postgresql/data}]
+  volumeClaimTemplates:
+    - metadata: {name: data}
+      spec: {accessModes: [ReadWriteOnce], resources: {requests: {storage: 1Gi}}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: postgres, namespace: incident-lens}
+spec: {selector: {app: postgres}, ports: [{name: postgres, port: 5432}]}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: redis, namespace: incident-lens}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: redis}}
+  template:
+    metadata: {labels: {app: redis}}
+    spec:
+      containers:
+        - name: redis
+          image: redis:7.4.5-alpine
+          args: [redis-server, --save, "", --appendonly, "no"]
+          ports: [{name: redis, containerPort: 6379}]
+          readinessProbe: {exec: {command: [redis-cli, ping]}, periodSeconds: 5}
+          resources: {requests: {cpu: 50m, memory: 32Mi}, limits: {cpu: 500m, memory: 128Mi}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: redis, namespace: incident-lens}
+spec: {selector: {app: redis}, ports: [{name: redis, port: 6379}]}

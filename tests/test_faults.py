@@ -1,6 +1,7 @@
 import time
 
 import pytest
+from fastapi import HTTPException
 
 from incident_lens.faults import FaultRegistry, FaultRequest, FaultType
 
@@ -35,3 +36,19 @@ def test_expired_fault_is_not_applied() -> None:
     fault.ends_at = time.time() - 1
 
     assert registry.active() == []
+
+
+@pytest.mark.asyncio
+async def test_http_error_fault_is_deterministic() -> None:
+    registry = FaultRegistry("checkout-api")
+    registry.start(
+        FaultRequest(
+            experiment_id="error-test",
+            fault_type=FaultType.HTTP_500,
+            intensity=0.5,
+            duration_seconds=5,
+        )
+    )
+
+    with pytest.raises(HTTPException, match="controlled fault"):
+        await registry.apply_request_faults()

@@ -1,11 +1,23 @@
 import pytest
+from opentelemetry.proto.collector.logs.v1.logs_service_pb2 import ExportLogsServiceRequest
+from opentelemetry.proto.collector.metrics.v1.metrics_service_pb2 import (
+    ExportMetricsServiceRequest,
+)
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
 from opentelemetry.proto.common.v1.common_pb2 import AnyValue, KeyValue
+from opentelemetry.proto.logs.v1.logs_pb2 import LogRecord, ResourceLogs, ScopeLogs
+from opentelemetry.proto.metrics.v1.metrics_pb2 import (
+    Gauge,
+    Metric,
+    NumberDataPoint,
+    ResourceMetrics,
+    ScopeMetrics,
+)
 from opentelemetry.proto.resource.v1.resource_pb2 import Resource
 from opentelemetry.proto.trace.v1.trace_pb2 import ResourceSpans, ScopeSpans, Span, Status
 
 from incident_lens.model import SignalKind
-from incident_lens.otlp import MalformedOTLP, decode_traces
+from incident_lens.otlp import MalformedOTLP, decode_logs, decode_metrics, decode_traces
 
 
 def kv(key: str, value: str | int) -> KeyValue:
@@ -65,3 +77,61 @@ def test_trace_parentage_and_error_attributes_survive_otlp_decode() -> None:
 def test_malformed_otlp_is_rejected() -> None:
     with pytest.raises(MalformedOTLP):
         decode_traces(b"\xff")
+
+
+def test_metric_and_deployment_log_decode() -> None:
+    resource = Resource(
+        attributes=[kv("service.name", "payment-service"), kv("service.version", "v1.7")]
+    )
+    metric_request = ExportMetricsServiceRequest(
+        resource_metrics=[
+            ResourceMetrics(
+                resource=resource,
+                scope_metrics=[
+                    ScopeMetrics(
+                        metrics=[
+                            Metric(
+                                name="process.memory.usage",
+                                unit="By",
+                                gauge=Gauge(
+                                    data_points=[
+                                        NumberDataPoint(
+                                            time_unix_nano=2_000_000_000,
+                                            as_int=128,
+                                            attributes=[kv("pool", "main")],
+                                        )
+                                    ]
+                                ),
+                            )
+                        ]
+                    )
+                ],
+            )
+        ]
+    )
+    log_request = ExportLogsServiceRequest(
+        resource_logs=[
+            ResourceLogs(
+                resource=resource,
+                scope_logs=[
+                    ScopeLogs(
+                        log_records=[
+                            LogRecord(
+                                time_unix_nano=2_000_000_000,
+                                body=AnyValue(string_value="deployment.started"),
+                                attributes=[kv("event_name", "deployment.started")],
+                            )
+                        ]
+                    )
+                ],
+            )
+        ]
+    )
+
+    metric_items, _ = decode_metrics(metric_request.SerializeToString())
+    log_items, _ = decode_logs(log_request.SerializeToString())
+
+    assert metric_items[0].value == 128
+    assert metric_items[0].attributes["pool"] == "main"
+    assert log_items[0].kind == SignalKind.DEPLOYMENT
+    assert log_items[0].attributes["service.version"] == "v1.7"

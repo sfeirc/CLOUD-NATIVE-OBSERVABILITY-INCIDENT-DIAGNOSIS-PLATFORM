@@ -14,6 +14,7 @@ from redis.asyncio import Redis
 from .service_factory import create_service
 
 app, settings, logger, instruments, faults = create_service("payment-service")
+app.state.ready = False
 tracer = trace.get_tracer("incident-lens.payment")
 
 
@@ -33,9 +34,12 @@ async def lifespan(_: object) -> AsyncIterator[None]:
         )
     app.state.pool = pool
     app.state.cache = Redis.from_url(settings.redis_url, decode_responses=True)
+    await app.state.cache.ping()
+    app.state.ready = True
     try:
         yield
     finally:
+        app.state.ready = False
         await app.state.cache.aclose()
         await pool.close()
 

@@ -1,0 +1,64 @@
+{
+  "metadata": {
+    "timestamp": 1786522227.2806253,
+    "hardware": {
+      "machine": "AMD64",
+      "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+      "logical_cpus": 8,
+      "physical_cpus": 4,
+      "memory_bytes": 34048368640
+    },
+    "operating_system": "Windows-11-10.0.26200-SP0",
+    "software": {
+      "python": "3.12.13",
+      "packages": {
+        "incident-lens": "0.1.0",
+        "pydantic": "2.13.4",
+        "opentelemetry-proto": "1.44.0"
+      }
+    },
+    "commit": "6127040419c2354784162e1a15f66b44d20246d3",
+    "configuration": {
+      "sizes": [
+        100,
+        1000,
+        5000,
+        10000
+      ],
+      "repetitions": 30,
+      "clock": "time.perf_counter_ns",
+      "measured_operation": "CorrelationEngine.analyze over an in-memory EvidenceStore",
+      "process_id": 25884
+    }
+  },
+  "summary": [
+    {
+      "configured_baseline_items": 100,
+      "median_ms": 0.31215,
+      "p95_ms": 0.4528,
+      "min_ms": 0.2774,
+      "max_ms": 0.4769
+    },
+    {
+      "configured_baseline_items": 1000,
+      "median_ms": 2.3125,
+      "p95_ms": 2.4563,
+      "min_ms": 2.2787,
+      "max_ms": 2.4973
+    },
+    {
+      "configured_baseline_items": 5000,
+      "median_ms": 11.9062,
+      "p95_ms": 13.7864,
+      "min_ms": 11.6431,
+      "max_ms": 14.2654
+    },
+    {
+      "configured_baseline_items": 10000,
+      "median_ms": 33.365300000000005,
+      "p95_ms": 43.5085,
+      "min_ms": 25.6667,
+      "max_ms": 45.6533
+    }
+  ]
+}

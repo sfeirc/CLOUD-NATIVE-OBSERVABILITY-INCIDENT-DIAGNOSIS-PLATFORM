@@ -30,6 +30,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "bandit>=1.7,<2",
+  "build>=1.2,<2",
   "mypy>=1.11,<2",
   "pip-audit>=2.7,<3",
   "pytest>=8.3,<9",
@@ -64,3 +65,15 @@ packages = ["incident_lens"]
 
 [tool.bandit]
 exclude_dirs = ["tests"]
+
+[tool.coverage.run]
+source = ["incident_lens"]
+omit = [
+  "*/api_service.py",
+  "*/chaos_service.py",
+  "*/cli.py",
+  "*/dashboard.py",
+  "*/order_service.py",
+  "*/payment_service.py",
+  "*/service_factory.py",
+]

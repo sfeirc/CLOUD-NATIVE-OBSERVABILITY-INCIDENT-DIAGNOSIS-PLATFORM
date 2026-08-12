@@ -73,8 +73,23 @@ class CorrelationEngine:
 
     def analyze(self, now: float | None = None) -> Incident | None:
         current_time = now or time.time()
-        current = self.store.query(since=current_time - 60, until=current_time)
-        baseline = self.store.query(since=current_time - 360, until=current_time - 60.001)
+        markers = [
+            item
+            for item in self.store.query(since=current_time - 300, until=current_time)
+            if item.kind in {SignalKind.CHAOS, SignalKind.DEPLOYMENT}
+        ]
+        recent_markers = [item for item in markers if item.timestamp >= current_time - 55]
+        if recent_markers:
+            current_start = min(item.timestamp for item in recent_markers)
+            baseline_width = max(15, current_time - current_start)
+            baseline_start = current_start - baseline_width
+            baseline_end = current_start - 0.001
+        else:
+            current_start = current_time - 60
+            baseline_start = current_time - 360
+            baseline_end = current_time - 60.001
+        current = self.store.query(since=current_start, until=current_time)
+        baseline = self.store.query(since=baseline_start, until=baseline_end)
         checkout_current = self._request_spans(current, "checkout-api")
         checkout_baseline = self._request_spans(baseline, "checkout-api")
         if len(checkout_current) < 3:
