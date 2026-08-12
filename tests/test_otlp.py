@@ -74,9 +74,10 @@ def test_trace_parentage_and_error_attributes_survive_otlp_decode() -> None:
     assert items[0].attributes["service.version"] == "v1.7"
 
 
-def test_malformed_otlp_is_rejected() -> None:
+@pytest.mark.parametrize("decoder", [decode_traces, decode_metrics, decode_logs])
+def test_malformed_otlp_is_rejected(decoder: object) -> None:
     with pytest.raises(MalformedOTLP):
-        decode_traces(b"\xff")
+        decoder(b"\xff")  # type: ignore[operator]
 
 
 def test_metric_and_deployment_log_decode() -> None:

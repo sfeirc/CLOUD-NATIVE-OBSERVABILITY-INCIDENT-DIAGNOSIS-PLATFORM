@@ -3,9 +3,10 @@ FROM python:3.12-slim-bookworm AS builder
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
 WORKDIR /build
-COPY pyproject.toml README.md* ./
+COPY pyproject.toml requirements.lock README.md* ./
 COPY src ./src
-RUN python -m pip wheel --wheel-dir /wheels .
+RUN python -m pip wheel --wheel-dir /wheels --require-hashes -r requirements.lock && \
+    python -m pip wheel --wheel-dir /wheels --no-deps .
 
 FROM python:3.12-slim-bookworm
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -18,4 +19,3 @@ USER app
 WORKDIR /app
 EXPOSE 8000
 ENTRYPOINT ["incident-lens"]
-

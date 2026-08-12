@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import heapq
 import math
 import time
 import uuid
+from collections import defaultdict
 from collections.abc import Iterable
 
 from .model import (
@@ -18,11 +20,14 @@ from .slo import DEFAULT_SLOS, SLODefinition, SLOStatus, calculate_slo
 
 
 def percentile(values: Iterable[float], quantile: float) -> float:
-    ordered = sorted(values)
-    if not ordered:
+    samples = list(values)
+    if not samples:
         return 0.0
-    index = max(0, math.ceil(quantile * len(ordered)) - 1)
-    return ordered[index]
+    index = max(0, math.ceil(quantile * len(samples)) - 1)
+    upper_count = len(samples) - index
+    if upper_count <= len(samples) // 4:
+        return heapq.nlargest(upper_count, samples)[-1]
+    return sorted(samples)[index]
 
 
 class CorrelationEngine:
@@ -44,20 +49,35 @@ class CorrelationEngine:
     def slo_statuses(self, now: float | None = None) -> list[SLOStatus]:
         current = now or time.time()
         long_items = self.store.query(since=current - 3600, until=current)
-        short_items = [item for item in long_items if item.timestamp >= current - 300]
+        return self._slo_statuses_from_items(long_items, current)
+
+    def _slo_statuses_from_items(
+        self, long_items: list[Evidence], current: float
+    ) -> list[SLOStatus]:
+        long_spans: dict[str, list[Evidence]] = defaultdict(list)
+        short_spans: dict[str, list[Evidence]] = defaultdict(list)
+        short_start = current - 300
+        for item in long_items:
+            if (
+                item.kind in {SignalKind.SPAN, SignalKind.ERROR}
+                and item.attributes.get("span.kind") == "SERVER"
+            ):
+                long_spans[item.service].append(item)
+                if item.timestamp >= short_start:
+                    short_spans[item.service].append(item)
         statuses: list[SLOStatus] = []
         for definition in DEFAULT_SLOS:
-            long_spans = self._request_spans(long_items, definition.service)
-            short_spans = self._request_spans(short_items, definition.service)
-            long_bad = self._bad_count(definition, long_spans)
-            short_bad = self._bad_count(definition, short_spans)
+            service_long = long_spans[definition.service]
+            service_short = short_spans[definition.service]
+            long_bad = self._bad_count(definition, service_long)
+            short_bad = self._bad_count(definition, service_short)
             statuses.append(
                 calculate_slo(
                     definition,
-                    total_events=len(long_spans),
+                    total_events=len(service_long),
                     bad_events=long_bad,
-                    short_bad_fraction=short_bad / len(short_spans) if short_spans else 0,
-                    long_bad_fraction=long_bad / len(long_spans) if long_spans else 0,
+                    short_bad_fraction=(short_bad / len(service_short) if service_short else 0),
+                    long_bad_fraction=(long_bad / len(service_long) if service_long else 0),
                 )
             )
         return statuses
@@ -73,10 +93,12 @@ class CorrelationEngine:
 
     def analyze(self, now: float | None = None) -> Incident | None:
         current_time = now or time.time()
+        hour_items = self.store.query(since=current_time - 3600, until=current_time)
         markers = [
             item
-            for item in self.store.query(since=current_time - 300, until=current_time)
-            if item.kind in {SignalKind.CHAOS, SignalKind.DEPLOYMENT}
+            for item in hour_items
+            if item.timestamp >= current_time - 300
+            and item.kind in {SignalKind.CHAOS, SignalKind.DEPLOYMENT}
         ]
         recent_markers = [item for item in markers if item.timestamp >= current_time - 55]
         if recent_markers:
@@ -88,8 +110,8 @@ class CorrelationEngine:
             current_start = current_time - 60
             baseline_start = current_time - 360
             baseline_end = current_time - 60.001
-        current = self.store.query(since=current_start, until=current_time)
-        baseline = self.store.query(since=baseline_start, until=baseline_end)
+        current = [item for item in hour_items if item.timestamp >= current_start]
+        baseline = [item for item in hour_items if baseline_start <= item.timestamp <= baseline_end]
         checkout_current = self._request_spans(current, "checkout-api")
         checkout_baseline = self._request_spans(baseline, "checkout-api")
         if len(checkout_current) < 3:
@@ -105,8 +127,8 @@ class CorrelationEngine:
             return None
 
         all_items = baseline + current
-        hypotheses = self._rank_hypotheses(baseline, current, current_time)
-        statuses = self.slo_statuses(current_time)
+        hypotheses = self._rank_hypotheses(baseline, current, hour_items, current_time)
+        statuses = self._slo_statuses_from_items(hour_items, current_time)
         timeline = self._timeline(all_items, hypotheses, current_time, statuses)
         title = "Checkout latency increased" if latency_triggered else "Checkout errors increased"
         return Incident(
@@ -120,21 +142,33 @@ class CorrelationEngine:
         )
 
     def _rank_hypotheses(
-        self, baseline: list[Evidence], current: list[Evidence], now: float
+        self,
+        baseline: list[Evidence],
+        current: list[Evidence],
+        hour_items: list[Evidence],
+        now: float,
     ) -> list[Hypothesis]:
-        services = sorted({item.service for item in current if item.service})
+        current_by_service: dict[str, list[Evidence]] = defaultdict(list)
+        baseline_by_service: dict[str, list[Evidence]] = defaultdict(list)
+        deployments_by_service: dict[str, list[Evidence]] = defaultdict(list)
+        for item in current:
+            if item.service:
+                current_by_service[item.service].append(item)
+        for item in baseline:
+            if item.service:
+                baseline_by_service[item.service].append(item)
+        for item in hour_items:
+            if item.timestamp >= now - 600 and item.service and item.kind == SignalKind.DEPLOYMENT:
+                deployments_by_service[item.service].append(item)
+
         candidates: list[tuple[str, str, list[ScoreContribution]]] = []
-        for service in services:
-            service_current = [item for item in current if item.service == service]
-            service_baseline = [item for item in baseline if item.service == service]
+        for service in sorted(current_by_service):
+            service_current = current_by_service[service]
+            service_baseline = baseline_by_service[service]
             current_spans = [item for item in service_current if item.kind == SignalKind.SPAN]
             baseline_spans = [item for item in service_baseline if item.kind == SignalKind.SPAN]
             latency_factor, latency_evidence = self._factor(current_spans, baseline_spans)
-            recent_deploy = [
-                item
-                for item in self.store.query(since=now - 600, until=now, service=service)
-                if item.kind == SignalKind.DEPLOYMENT
-            ]
+            recent_deploy = deployments_by_service[service]
             errors = [item for item in service_current if item.kind == SignalKind.ERROR]
 
             db_current = [item for item in current_spans if item.attributes.get("db.system")]
@@ -195,7 +229,7 @@ class CorrelationEngine:
                         tuple(item.evidence_id for item in recent_deploy[-2:]),
                     )
                 )
-            if errors:
+            if recent_deploy and errors:
                 deployment_rules.append(
                     ScoreContribution(
                         "concurrent_errors",
@@ -274,7 +308,9 @@ class CorrelationEngine:
         current_p99 = percentile((item.value for item in current), 0.99)
         baseline_p99 = percentile((item.value for item in baseline), 0.99)
         factor = current_p99 / max(1, baseline_p99)
-        evidence = sorted(current, key=lambda item: item.value)[-3:]
+        evidence = sorted(
+            heapq.nlargest(3, current, key=lambda item: item.value), key=lambda item: item.value
+        )
         return factor, evidence
 
     @staticmethod

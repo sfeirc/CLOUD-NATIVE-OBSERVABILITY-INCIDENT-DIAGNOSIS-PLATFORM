@@ -1,14 +1,18 @@
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-RESULTS = ROOT / "benchmarks" / "results" / "local"
+RESULTS_ROOT = ROOT / "benchmarks" / "results"
 
 
-def main() -> None:
-    data = json.loads((RESULTS / "summary.json").read_text(encoding="utf-8"))["summary"]
+def render(label: str) -> None:
+    if Path(label).name != label:
+        raise ValueError("result label must be a single directory name")
+    results = RESULTS_ROOT / label
+    data = json.loads((results / "summary.json").read_text(encoding="utf-8"))["summary"]
     width, height = 900, 480
     margin = {"left": 80, "right": 30, "top": 45, "bottom": 70}
     plot_w = width - margin["left"] - margin["right"]
@@ -55,7 +59,14 @@ def main() -> None:
             "</svg>",
         ]
     )
-    (RESULTS / "correlation_latency.svg").write_text("".join(parts), encoding="utf-8")
+    (results / "correlation_latency.svg").write_text("".join(parts), encoding="utf-8")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Render an Incident Lens benchmark figure")
+    parser.add_argument("--result", default="local")
+    args = parser.parse_args()
+    render(args.result)
 
 
 if __name__ == "__main__":

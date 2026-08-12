@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import csv
 import importlib.metadata
 import json
@@ -16,7 +17,7 @@ from incident_lens.correlation import CorrelationEngine, percentile
 from incident_lens.model import Evidence, EvidenceStore, SignalKind
 
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / "benchmarks" / "results" / "local"
+RESULTS_ROOT = ROOT / "benchmarks" / "results"
 SIZES = (100, 1_000, 5_000, 10_000)
 REPETITIONS = 30
 
@@ -66,7 +67,13 @@ def make_store(size: int) -> EvidenceStore:
     return store
 
 
-def metadata() -> dict[str, object]:
+def git_output(*args: str) -> str:
+    return subprocess.run(
+        ["git", *args], cwd=ROOT, text=True, capture_output=True, check=True
+    ).stdout.strip()
+
+
+def metadata(label: str, clean: bool) -> dict[str, object]:
     packages = {
         package: importlib.metadata.version(package)
         for package in ("incident-lens", "pydantic", "opentelemetry-proto")
@@ -82,21 +89,29 @@ def metadata() -> dict[str, object]:
         },
         "operating_system": platform.platform(),
         "software": {"python": platform.python_version(), "packages": packages},
-        "commit": subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True, capture_output=True, check=True
-        ).stdout.strip(),
+        "commit": git_output("rev-parse", "HEAD"),
+        "working_tree_clean": clean,
         "configuration": {
             "sizes": SIZES,
             "repetitions": REPETITIONS,
             "clock": "time.perf_counter_ns",
             "measured_operation": "CorrelationEngine.analyze over an in-memory EvidenceStore",
             "process_id": os.getpid(),
+            "result_label": label,
         },
     }
 
 
-def main() -> None:
-    OUTPUT.mkdir(parents=True, exist_ok=True)
+def run(label: str, allow_dirty: bool = False) -> dict[str, object]:
+    if Path(label).name != label or label in {"", ".", ".."}:
+        raise ValueError("result label must be a single safe directory name")
+    clean = git_output("status", "--porcelain") == ""
+    if not clean and not allow_dirty:
+        raise RuntimeError(
+            "refusing to benchmark a dirty tree; commit changes or use --allow-dirty"
+        )
+    output = RESULTS_ROOT / label
+    output.mkdir(parents=True, exist_ok=True)
     rows: list[dict[str, int | float]] = []
     for size in SIZES:
         store = make_store(size)
@@ -116,7 +131,7 @@ def main() -> None:
                 }
             )
 
-    raw_path = OUTPUT / "raw_measurements.csv"
+    raw_path = output / "raw_measurements.csv"
     with raw_path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
         writer.writeheader()
@@ -136,9 +151,20 @@ def main() -> None:
                 "max_ms": max(samples),
             }
         )
-    result = {"metadata": metadata(), "summary": summaries}
-    (OUTPUT / "summary.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
+    result: dict[str, object] = {"metadata": metadata(label, clean), "summary": summaries}
+    (output / "summary.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     print(json.dumps(result, indent=2))
+    return result
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Benchmark Incident Lens correlation analysis")
+    parser.add_argument(
+        "--output", default="local", help="directory label under benchmarks/results"
+    )
+    parser.add_argument("--allow-dirty", action="store_true")
+    args = parser.parse_args()
+    run(args.output, args.allow_dirty)
 
 
 if __name__ == "__main__":

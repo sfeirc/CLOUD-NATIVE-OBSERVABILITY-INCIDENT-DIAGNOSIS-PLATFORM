@@ -1,3 +1,4 @@
+import asyncio
 import time
 
 import pytest
@@ -52,3 +53,67 @@ async def test_http_error_fault_is_deterministic() -> None:
 
     with pytest.raises(HTTPException, match="controlled fault"):
         await registry.apply_request_faults()
+
+
+@pytest.mark.asyncio
+async def test_latency_drop_and_dependency_delays_are_controlled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    delays: list[float] = []
+
+    async def capture_delay(seconds: float) -> None:
+        delays.append(seconds)
+
+    monkeypatch.setattr(asyncio, "sleep", capture_delay)
+    registry = FaultRegistry("payment-service")
+    registry.start(
+        FaultRequest(
+            experiment_id="latency-test",
+            fault_type=FaultType.LATENCY,
+            intensity=0.5,
+            duration_seconds=5,
+        )
+    )
+    await registry.apply_request_faults()
+    registry.stop("latency-test")
+    registry.start(
+        FaultRequest(
+            experiment_id="database-test",
+            fault_type=FaultType.DATABASE_SLOWDOWN,
+            intensity=0.5,
+            duration_seconds=5,
+        )
+    )
+    await registry.dependency_delay(database=True)
+    registry.stop("database-test")
+    registry.start(
+        FaultRequest(
+            experiment_id="drop-test",
+            fault_type=FaultType.DROP,
+            intensity=0.5,
+            duration_seconds=5,
+        )
+    )
+
+    with pytest.raises(HTTPException, match="dropped request"):
+        await registry.apply_request_faults()
+
+    assert delays == pytest.approx([0.525, 0.8, 1.0])
+
+
+@pytest.mark.asyncio
+async def test_cpu_pressure_is_bounded() -> None:
+    registry = FaultRegistry("order-service")
+    registry.start(
+        FaultRequest(
+            experiment_id="cpu-test",
+            fault_type=FaultType.CPU_PRESSURE,
+            intensity=0.01,
+            duration_seconds=5,
+        )
+    )
+    started = time.perf_counter()
+
+    await registry.apply_request_faults()
+
+    assert time.perf_counter() - started < 0.1

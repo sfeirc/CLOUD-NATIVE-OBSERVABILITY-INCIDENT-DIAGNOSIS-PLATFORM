@@ -3,7 +3,8 @@
 PYTHON ?= python
 
 install:
-	$(PYTHON) -m pip install -e ".[dev]"
+	$(PYTHON) -m pip install --require-hashes -r requirements-dev.lock
+	$(PYTHON) -m pip install --no-deps -e .
 
 format:
 	$(PYTHON) -m ruff format .
@@ -21,7 +22,7 @@ build:
 	$(PYTHON) -m build
 
 security:
-	$(PYTHON) -m pip_audit
+	$(PYTHON) -m pip_audit --disable-pip -r requirements-dev.lock --vulnerability-service osv
 	$(PYTHON) -m bandit -c pyproject.toml -r src
 
 up:
@@ -37,8 +38,7 @@ demo-incident:
 	$(PYTHON) scripts/demo_incident.py
 
 benchmark:
-	$(PYTHON) benchmarks/run.py
+	$(PYTHON) benchmarks/run.py --output local
 
 figures:
-	$(PYTHON) benchmarks/plot.py
-
+	$(PYTHON) benchmarks/plot.py --result local
