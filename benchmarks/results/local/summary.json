@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "timestamp": 1786522227.2806253,
+    "timestamp": 1786522600.166382,
     "hardware": {
       "machine": "AMD64",
       "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
@@ -17,7 +17,7 @@
         "opentelemetry-proto": "1.44.0"
       }
     },
-    "commit": "6127040419c2354784162e1a15f66b44d20246d3",
+    "commit": "bafbb842f1dca0488d4ac08a28c830a4d893ac6f",
     "configuration": {
       "sizes": [
         100,
@@ -28,37 +28,37 @@
       "repetitions": 30,
       "clock": "time.perf_counter_ns",
       "measured_operation": "CorrelationEngine.analyze over an in-memory EvidenceStore",
-      "process_id": 25884
+      "process_id": 9452
     }
   },
   "summary": [
     {
       "configured_baseline_items": 100,
-      "median_ms": 0.31215,
-      "p95_ms": 0.4528,
-      "min_ms": 0.2774,
-      "max_ms": 0.4769
+      "median_ms": 0.3095,
+      "p95_ms": 0.3332,
+      "min_ms": 0.2902,
+      "max_ms": 0.3424
     },
     {
       "configured_baseline_items": 1000,
-      "median_ms": 2.3125,
-      "p95_ms": 2.4563,
-      "min_ms": 2.2787,
-      "max_ms": 2.4973
+      "median_ms": 2.7253,
+      "p95_ms": 3.0066,
+      "min_ms": 2.6644,
+      "max_ms": 3.4185
     },
     {
       "configured_baseline_items": 5000,
-      "median_ms": 11.9062,
-      "p95_ms": 13.7864,
-      "min_ms": 11.6431,
-      "max_ms": 14.2654
+      "median_ms": 13.9824,
+      "p95_ms": 15.1197,
+      "min_ms": 12.2122,
+      "max_ms": 15.4766
     },
     {
       "configured_baseline_items": 10000,
-      "median_ms": 33.365300000000005,
-      "p95_ms": 43.5085,
-      "min_ms": 25.6667,
-      "max_ms": 45.6533
+      "median_ms": 27.011,
+      "p95_ms": 30.6289,
+      "min_ms": 24.6469,
+      "max_ms": 33.0282
     }
   ]
 }

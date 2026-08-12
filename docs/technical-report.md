@@ -27,15 +27,15 @@ the diagnosis receiver. Grafana provisions trace-to-log and trace-to-metric link
 
 ## Verification evidence
 
-The local run on 2026-08-12 passed 13 tests with 81.88% coverage over the selected
+The local run on 2026-08-12 passed 13 tests with 82.18% coverage over the selected
 owned core (entrypoint and container glue excluded). Tests cover trace parentage,
 error attributes, OTLP metrics/logs, malformed payload rejection, SLO arithmetic,
 dual-window alerts, database hypothesis ranking, evidence citations, safe memory
 fault bounds, deterministic HTTP faults, structured logs, and API validation.
 
 The recorded correlation benchmark uses 30 repetitions per size. Median analysis
-time was 0.312 ms at 100 configured baseline items, 2.313 ms at 1,000, 11.906 ms
-at 5,000, and 33.365 ms at 10,000. The 10,000-item p95 was 43.508 ms. These are
+time was 0.310 ms at 100 configured baseline items, 2.725 ms at 1,000, 13.982 ms
+at 5,000, and 27.011 ms at 10,000. The 10,000-item p95 was 30.629 ms. These are
 local in-memory algorithm measurements on the hardware recorded in
 `benchmarks/results/local/summary.json`; no container or throughput inference is
 made.
@@ -47,3 +47,7 @@ this report does not claim the platform is production-ready or that the main
 branch is remotely green. CI is configured to run formatting, linting, tests,
 package/container builds, Compose validation, dependency audit, and static
 security checks on GitHub-hosted runners.
+
+Bandit completed locally with no findings. The local dependency audit did not
+complete because PyPI TLS validation failed on a self-signed certificate in the
+host chain; TLS verification was not bypassed, so no clean audit result is claimed.

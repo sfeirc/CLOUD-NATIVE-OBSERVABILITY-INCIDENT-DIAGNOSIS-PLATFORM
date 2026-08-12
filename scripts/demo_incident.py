@@ -102,8 +102,15 @@ async def run(scenario_name: str) -> dict[str, Any]:
         print("[2/5] Recreating payment-service as version v1.7-bad")
         changed_env = os.environ.copy()
         changed_env["PAYMENT_VERSION"] = "v1.7-bad"
-        compose("up", "-d", "--no-deps", "--force-recreate", "payment-service", env=changed_env)
-        await asyncio.sleep(5)
+        compose(
+            "up",
+            "-d",
+            "--no-deps",
+            "--force-recreate",
+            "--wait",
+            "payment-service",
+            env=changed_env,
+        )
     else:
         print(f"[2/5] Starting controlled experiment: {scenario_name}")
 

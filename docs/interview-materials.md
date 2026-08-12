@@ -21,10 +21,10 @@
   chaos experiments through a Collector fan-out to Prometheus, Loki, and Tempo.
 - Implemented an evidence-citing incident engine with OTLP protobuf ingestion,
   SLO/error-budget arithmetic, multi-window burn alerts, deterministic hypothesis
-  scoring, timeline generation, and incident deduplication; achieved 81.88% local
+  scoring, timeline generation, and incident deduplication; achieved 82.18% local
   core test coverage across 13 tests.
 - Benchmarked the owned correlation path with 120 raw measurements and reproducible
-  environment metadata; measured 33.365 ms median and 43.508 ms p95 analysis at
+  environment metadata; measured 27.011 ms median and 30.629 ms p95 analysis at
   10,000 configured baseline evidence items on the recorded four-core Windows host.
 
 ## LinkedIn project description

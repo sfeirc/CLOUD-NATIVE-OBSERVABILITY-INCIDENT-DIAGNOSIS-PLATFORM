@@ -16,6 +16,7 @@ from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExp
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+from opentelemetry.metrics import Observation
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.sdk.metrics import MeterProvider
@@ -96,6 +97,7 @@ def configure_telemetry(settings: Settings) -> tuple[logging.Logger, Instruments
     root.handlers[:] = [stdout, LoggingHandler(logger_provider=logs)]
 
     meter = metrics.get_meter(settings.service_name)
+    process = psutil.Process()
     instruments = Instruments(
         requests=meter.create_counter("http.server.requests", unit="{request}"),
         errors=meter.create_counter("http.server.errors", unit="{error}"),
@@ -103,8 +105,27 @@ def configure_telemetry(settings: Settings) -> tuple[logging.Logger, Instruments
         dependency_errors=meter.create_counter("dependency.errors", unit="{error}"),
         queue_depth=meter.create_up_down_counter("service.queue.depth", unit="{request}"),
         database_duration=meter.create_histogram("database.client.duration", unit="ms"),
-        process_memory=meter.create_histogram("process.memory.usage", unit="By"),
-        process_cpu=meter.create_histogram("process.cpu.utilization", unit="1"),
+        process_memory=meter.create_observable_gauge(
+            "process.memory.usage",
+            callbacks=[
+                lambda _: [
+                    Observation(process.memory_info().rss, {"service": settings.service_name})
+                ]
+            ],
+            unit="By",
+        ),
+        process_cpu=meter.create_observable_gauge(
+            "process.cpu.utilization",
+            callbacks=[
+                lambda _: [
+                    Observation(
+                        min(process.cpu_percent(interval=None) / 100, 1),
+                        {"service": settings.service_name},
+                    )
+                ]
+            ],
+            unit="1",
+        ),
     )
     HTTPXClientInstrumentor().instrument()
     return logging.getLogger(settings.service_name), instruments
@@ -139,11 +160,6 @@ class RequestTelemetryMiddleware(BaseHTTPMiddleware):
         self.instruments.duration.record(elapsed_ms, bounded)
         if response.status_code >= 500:
             self.instruments.errors.add(1, bounded)
-        process = psutil.Process()
-        self.instruments.process_memory.record(process.memory_info().rss, {"service": self.service})
-        self.instruments.process_cpu.record(
-            min(process.cpu_percent(interval=None) / 100, 1), {"service": self.service}
-        )
         response.headers["x-request-id"] = request_id
         return response
 

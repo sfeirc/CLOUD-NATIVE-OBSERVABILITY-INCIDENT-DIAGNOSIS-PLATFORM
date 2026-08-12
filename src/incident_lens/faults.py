@@ -90,7 +90,7 @@ class FaultRegistry:
                     while time.perf_counter() < deadline:
                         payload = hashlib.sha256(payload).digest()
                 case FaultType.MEMORY_PRESSURE:
-                    await asyncio.sleep(0.15 * intensity)
+                    await asyncio.sleep(0.4 * intensity)
                 case _:
                     continue
 

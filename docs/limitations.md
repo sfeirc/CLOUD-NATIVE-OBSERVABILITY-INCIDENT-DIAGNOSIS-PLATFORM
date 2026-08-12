@@ -18,4 +18,6 @@
   a placeholder Secret that must be replaced before deployment.
 - The local benchmark measures only in-memory correlation analysis. It says
   nothing about request throughput, Collector capacity, or backend ingestion.
-
+- The local `pip-audit` attempt could not query PyPI because the host TLS chain
+  included an untrusted self-signed certificate. Certificate verification was not
+  disabled; dependency vulnerability status therefore remains unverified locally.

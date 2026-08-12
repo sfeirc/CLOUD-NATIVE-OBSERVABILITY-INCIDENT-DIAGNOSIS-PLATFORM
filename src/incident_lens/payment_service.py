@@ -50,13 +50,13 @@ app.router.lifespan_context = lifespan
 @app.post("/charge")
 async def charge(payload: ChargeRequest, request: Request) -> dict[str, object]:
     payment_id = str(uuid.uuid4())
-    await faults.dependency_delay(database=True)
     started = time.perf_counter()
     try:
         with tracer.start_as_current_span("INSERT payments") as span:
             span.set_attribute("db.system", "postgresql")
             span.set_attribute("db.operation.name", "INSERT")
             span.set_attribute("server.address", "postgres")
+            await faults.dependency_delay(database=True)
             async with app.state.pool.connection() as connection:
                 await connection.execute(
                     "INSERT INTO payments (id, customer_id, amount) VALUES (%s, %s, %s)",

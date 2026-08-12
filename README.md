@@ -52,10 +52,10 @@ Windows 11, 4 physical/8 logical CPUs, 30 repetitions per size:
 
 | Configured baseline evidence items | Median | p95 |
 |---:|---:|---:|
-| 100 | 0.312 ms | 0.453 ms |
-| 1,000 | 2.313 ms | 2.456 ms |
-| 5,000 | 11.906 ms | 13.786 ms |
-| 10,000 | 33.365 ms | 43.508 ms |
+| 100 | 0.310 ms | 0.333 ms |
+| 1,000 | 2.725 ms | 3.007 ms |
+| 5,000 | 13.982 ms | 15.120 ms |
+| 10,000 | 27.011 ms | 30.629 ms |
 
 ![Measured correlation latency](benchmarks/results/local/correlation_latency.svg)
 
@@ -126,7 +126,7 @@ make build
 make security
 ```
 
-The verified local run passed **13 tests** with **81.88%** coverage over the owned
+The verified local run passed **13 tests** with **82.18%** coverage over the owned
 core selected for unit/API coverage. Tests exercise telemetry parentage and
 correlation, malformed OTLP, error attributes, SLO/burn calculations, hypothesis
 ranking, evidence citations, bounded chaos, structured logs, and alert/API
