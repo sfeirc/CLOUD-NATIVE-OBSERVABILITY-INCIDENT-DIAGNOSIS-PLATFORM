@@ -1,0 +1,63 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "incident-lens"
+version = "0.1.0"
+description = "Transparent multi-signal incident diagnosis for an OpenTelemetry demo system"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+dependencies = [
+  "fastapi>=0.115,<1",
+  "httpx>=0.27,<1",
+  "opentelemetry-api>=1.27,<2",
+  "opentelemetry-exporter-otlp-proto-http>=1.27,<2",
+  "opentelemetry-instrumentation-fastapi>=0.48b0,<1",
+  "opentelemetry-instrumentation-httpx>=0.48b0,<1",
+  "opentelemetry-proto>=1.27,<2",
+  "opentelemetry-sdk>=1.27,<2",
+  "prometheus-client>=0.21,<1",
+  "psutil>=6,<8",
+  "pydantic>=2.9,<3",
+  "python-json-logger>=2,<4",
+  "uvicorn[standard]>=0.30,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "bandit>=1.7,<2",
+  "mypy>=1.11,<2",
+  "pip-audit>=2.7,<3",
+  "pytest>=8.3,<9",
+  "pytest-asyncio>=0.24,<1",
+  "pytest-cov>=5,<7",
+  "ruff>=0.6,<1",
+]
+
+[project.scripts]
+incident-lens = "incident_lens.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/incident_lens"]
+
+[tool.pytest.ini_options]
+addopts = "-q --strict-markers"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+packages = ["incident_lens"]
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+
