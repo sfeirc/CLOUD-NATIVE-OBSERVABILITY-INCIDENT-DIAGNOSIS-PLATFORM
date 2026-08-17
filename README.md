@@ -6,6 +6,10 @@
 
 **An OpenTelemetry incident lab that turns correlated metrics, logs, traces, and deployments into ranked, evidence-citing failure hypotheses.**
 
+## Why this matters across industries
+
+Correlating metrics/logs/traces/deployments into a ranked, evidence-cited root-cause hypothesis is the core SRE/observability problem for any tech organization running production services. The same discipline transfers directly: quant/finance infrastructure teams need the same fast, evidence-based incident diagnosis for trading/settlement systems; industrial/oil & gas operations centers face an analogous problem correlating sensor alarms, control-system logs, and maintenance events to find a root cause fast; and consulting engagements building observability tooling need exactly this "explain the failure, don't just alert on it" approach to be defensible to a client.
+
 ## Break it and watch it explain the failure
 
 ```shell
