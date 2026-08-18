@@ -1,4 +1,4 @@
-FROM python:3.12-slim-bookworm AS builder
+FROM python:3.14-slim-bookworm AS builder
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1
@@ -8,7 +8,7 @@ COPY src ./src
 RUN python -m pip wheel --wheel-dir /wheels --require-hashes -r requirements.lock && \
     python -m pip wheel --wheel-dir /wheels --no-deps .
 
-FROM python:3.12-slim-bookworm
+FROM python:3.14-slim-bookworm
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH=/home/app/.local/bin:$PATH
